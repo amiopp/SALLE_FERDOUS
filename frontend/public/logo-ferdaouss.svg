@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">Logo Ferdaouss Fitness Club</title>
+  <desc id="desc">Embleme noir, blanc et rouge pour Ferdaouss Fitness Club</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#161616"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="160" cy="160" r="152" fill="url(#bg)"/>
+  <circle cx="160" cy="160" r="148" fill="none" stroke="#e11d2c" stroke-width="8"/>
+  <circle cx="160" cy="160" r="113" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.3"/>
+
+  <text x="160" y="70" fill="#e11d2c" font-size="34" font-family="Verdana, Geneva, sans-serif" font-weight="700" text-anchor="middle" letter-spacing="2">FERDAOUSS</text>
+
+  <g transform="translate(160 140)">
+    <rect x="-42" y="-8" width="84" height="16" rx="8" fill="#ffffff"/>
+    <rect x="-70" y="-18" width="22" height="36" rx="5" fill="#ffffff"/>
+    <rect x="48" y="-18" width="22" height="36" rx="5" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="6" fill="#000000"/>
+  </g>
+
+  <text x="160" y="205" fill="#ffffff" font-size="44" font-family="Verdana, Geneva, sans-serif" font-weight="800" text-anchor="middle" letter-spacing="1">FITNESS</text>
+  <text x="160" y="245" fill="#e11d2c" font-size="40" font-family="Verdana, Geneva, sans-serif" font-weight="800" text-anchor="middle" letter-spacing="2">CLUB</text>
+</svg>
