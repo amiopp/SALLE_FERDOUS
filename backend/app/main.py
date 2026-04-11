@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .db import get_connection, init_db
 from .models import CheckInOut, ClientCreate, ClientOut, ClientUpdate, DashboardOut
 
+app = FastAPI(title="Ferdaouss Fitness API", version="1.0.0")
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -14,7 +15,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://ferdaoussclub.netlify.app/"
+        "https://ferdaoussclub.netlify.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
