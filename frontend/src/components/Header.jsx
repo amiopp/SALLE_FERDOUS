@@ -3,7 +3,7 @@ export default function Header() {
     <header className="topbar panel">
       <div className="brand">
         <img
-          src="/logo-ferdaouss.svg"
+          src="/unnamed.png"
           alt="Logo Ferdaouss Fitness Club"
           className="brand-logo"
         />
