@@ -42,6 +42,74 @@ body {
   gap: 1rem;
 }
 
+.auth-shell {
+  min-height: 70vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 0;
+}
+
+.auth-card {
+  width: min(540px, 100%);
+  padding: 2rem;
+  border-radius: 24px;
+}
+
+.auth-header {
+  margin-bottom: 1.5rem;
+}
+
+.auth-header h2 {
+  margin: 0.35rem 0 0.55rem;
+  font-size: 1.75rem;
+}
+
+.auth-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.6;
+}
+
+.auth-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 700;
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.85rem 0.95rem;
+  font: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-form input:focus {
+  border-color: #93a5bc;
+  box-shadow: 0 0 0 3px rgba(147, 165, 188, 0.15);
+}
+
+.auth-notice {
+  margin-top: 1.25rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.auth-notice strong {
+  color: var(--ink);
+}
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -227,6 +295,7 @@ body {
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 14px;
+  background: #fff;
 }
 
 table {
@@ -488,6 +557,82 @@ button {
   .section-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .table-wrapper {
+    overflow: visible;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  table {
+    min-width: 0;
+  }
+
+  table,
+  thead,
+  tbody,
+  tr,
+  td {
+    display: block;
+    width: 100%;
+  }
+
+  thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  tr {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    padding: 0.35rem 0.75rem;
+  }
+
+  td {
+    display: grid;
+    grid-template-columns: minmax(96px, 38%) 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid #edf1f5;
+    padding: 0.7rem 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  td:last-child {
+    border-bottom: none;
+  }
+
+  .row-actions {
+    justify-content: flex-end;
+  }
+
+  .row-actions .btn-ghost,
+  .row-actions .btn-danger {
+    flex: 1;
+    min-width: 0;
   }
 }
 

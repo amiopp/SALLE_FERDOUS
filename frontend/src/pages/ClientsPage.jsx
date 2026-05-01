@@ -100,22 +100,12 @@ export default function ClientsPage({ onDataChanged }) {
     }
   }
 
-  async function handleCheckIn(client) {
-    try {
-      setError("");
-      await api.checkInClient(client.id);
-      setFeedback(`Check-in enregistre pour ${client.nom}.`);
-      await onDataChanged();
-    } catch (checkinError) {
-      setError(checkinError.message);
-    }
-  }
 
   return (
     <section className="panel section-block">
       <div className="section-header">
         <h2>Gestion des clients</h2>
-        <p>Ajouter, modifier, supprimer et check-in</p>
+        <p>Ajouter, modifier et supprimer les clients</p>
       </div>
 
       <div className="toolbar">
@@ -139,7 +129,6 @@ export default function ClientsPage({ onDataChanged }) {
         loading={loading}
         onEdit={openEditModal}
         onDelete={handleDeleteClient}
-        onCheckIn={handleCheckIn}
       />
 
       <ClientFormModal

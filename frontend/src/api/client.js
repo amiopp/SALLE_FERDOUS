@@ -1,15 +1,24 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 async function request(path, options = {}) {
+  const token = sessionStorage.getItem("admin_token");
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers,
     ...options,
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      sessionStorage.removeItem("admin_token");
+      throw new Error("Session expirée ou identifiants invalides.");
+    }
+
     let message = "Une erreur est survenue";
     try {
       const errorData = await response.json();
@@ -53,17 +62,14 @@ export const api = {
     });
   },
 
-  checkInClient(clientId) {
-    return request(`/api/attendance/checkin/${clientId}`, {
-      method: "POST",
-    });
-  },
-
-  getTodayAttendance() {
-    return request("/api/attendance/today");
-  },
-
   getDashboard() {
     return request("/api/dashboard");
+  },
+
+  login(username, password) {
+    return request("/api/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
   },
 };

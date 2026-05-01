@@ -1,7 +1,7 @@
 const TABS = [
   { id: "dashboard", label: "Tableau de bord" },
   { id: "clients", label: "Clients" },
-  { id: "attendance", label: "Presences" },
+  { id: "expired", label: "Clients expires" },
 ];
 
 export default function NavTabs({ activeTab, onChange }) {

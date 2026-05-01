@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
 import StatCard from "../components/StatCard";
-import TodayAttendanceList from "../components/TodayAttendanceList";
 
-export default function DashboardPage({ dashboard, todayAttendance, loading, error }) {
+export default function DashboardPage({ dashboard, loading, error }) {
   const [search, setSearch] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -43,11 +42,6 @@ export default function DashboardPage({ dashboard, todayAttendance, loading, err
 
         <div className="stats-grid">
           <StatCard title="Total clients" value={dashboard.total_clients} tone="neutral" />
-          <StatCard
-            title="Check-in aujourd'hui"
-            value={dashboard.total_presences_aujourdhui}
-            tone="positive"
-          />
         </div>
       </div>
 
@@ -92,13 +86,6 @@ export default function DashboardPage({ dashboard, todayAttendance, loading, err
         )}
       </div>
 
-      <div className="panel section-block">
-        <div className="section-header">
-          <h2>Presences aujourd'hui</h2>
-          <p>Clients deja passes a la salle</p>
-        </div>
-        <TodayAttendanceList attendance={todayAttendance} />
-      </div>
     </section>
   );
 }
