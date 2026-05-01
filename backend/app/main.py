@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from psycopg.rows import dict_row
 
-from .db import get_connection, init_db
+from .db import USE_POSTGRES, get_connection, init_db
 from .models import CheckInOut, ClientCreate, ClientOut, ClientUpdate, DashboardOut
 
 app = FastAPI(title="Ferdaouss Fitness API", version="1.0.0")
@@ -113,15 +113,22 @@ def get_clients(search: str | None = Query(default=None), token: str = Depends(g
     params: list[str] = []
 
     if search and search.strip():
-        sql += " WHERE nom ILIKE %s"
-        params.append(f"%{search.strip()}%")
+        if USE_POSTGRES:
+            sql += " WHERE nom ILIKE %s"
+            params.append(f"%{search.strip()}%")
+        else:
+            sql += " WHERE LOWER(nom) LIKE ?"
+            params.append(f"%{search.strip().lower()}%")
 
     sql += " ORDER BY nom ASC"
 
     with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(sql, params)
-            rows = cur.fetchall()
+        if USE_POSTGRES:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(sql, params)
+                rows = cur.fetchall()
+        else:
+            rows = conn.execute(sql, params).fetchall()
 
     return [map_client_row(row) for row in rows]
 
@@ -129,26 +136,44 @@ def get_clients(search: str | None = Query(default=None), token: str = Depends(g
 @app.post("/api/clients", response_model=ClientOut, status_code=201)
 def create_client(payload: ClientCreate, token: str = Depends(get_authorization_header)) -> ClientOut:
     with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
+        if USE_POSTGRES:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    INSERT INTO clients (nom, telephone, date_debut, duree_abonnement)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (
+                        payload.nom.strip(),
+                        payload.telephone.strip(),
+                        payload.date_debut,
+                        payload.duree_abonnement,
+                    ),
+                )
+                new_id = cur.fetchone()["id"]
+                cur.execute(
+                    "SELECT id, nom, telephone, date_debut, duree_abonnement FROM clients WHERE id = %s",
+                    (new_id,),
+                )
+                row = cur.fetchone()
+        else:
+            cursor = conn.execute(
                 """
                 INSERT INTO clients (nom, telephone, date_debut, duree_abonnement)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id
+                VALUES (?, ?, ?, ?)
                 """,
                 (
                     payload.nom.strip(),
                     payload.telephone.strip(),
-                    payload.date_debut,
+                    payload.date_debut.isoformat(),
                     payload.duree_abonnement,
                 ),
             )
-            new_id = cur.fetchone()["id"]
-            cur.execute(
-                "SELECT id, nom, telephone, date_debut, duree_abonnement FROM clients WHERE id = %s",
-                (new_id,),
-            )
-            row = cur.fetchone()
+            row = conn.execute(
+                "SELECT id, nom, telephone, date_debut, duree_abonnement FROM clients WHERE id = ?",
+                (cursor.lastrowid,),
+            ).fetchone()
 
     return map_client_row(row)
 
@@ -156,32 +181,56 @@ def create_client(payload: ClientCreate, token: str = Depends(get_authorization_
 @app.put("/api/clients/{client_id}", response_model=ClientOut)
 def update_client(client_id: int, payload: ClientUpdate, token: str = Depends(get_authorization_header)) -> ClientOut:
     with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("SELECT id FROM clients WHERE id = %s", (client_id,))
-            existing = cur.fetchone()
+        if USE_POSTGRES:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT id FROM clients WHERE id = %s", (client_id,))
+                existing = cur.fetchone()
+                if not existing:
+                    raise HTTPException(status_code=404, detail="Client introuvable")
+
+                cur.execute(
+                    """
+                    UPDATE clients
+                    SET nom = %s, telephone = %s, date_debut = %s, duree_abonnement = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        payload.nom.strip(),
+                        payload.telephone.strip(),
+                        payload.date_debut,
+                        payload.duree_abonnement,
+                        client_id,
+                    ),
+                )
+
+                cur.execute(
+                    "SELECT id, nom, telephone, date_debut, duree_abonnement FROM clients WHERE id = %s",
+                    (client_id,),
+                )
+                row = cur.fetchone()
+        else:
+            existing = conn.execute("SELECT id FROM clients WHERE id = ?", (client_id,)).fetchone()
             if not existing:
                 raise HTTPException(status_code=404, detail="Client introuvable")
 
-            cur.execute(
+            conn.execute(
                 """
                 UPDATE clients
-                SET nom = %s, telephone = %s, date_debut = %s, duree_abonnement = %s
-                WHERE id = %s
+                SET nom = ?, telephone = ?, date_debut = ?, duree_abonnement = ?
+                WHERE id = ?
                 """,
                 (
                     payload.nom.strip(),
                     payload.telephone.strip(),
-                    payload.date_debut,
+                    payload.date_debut.isoformat(),
                     payload.duree_abonnement,
                     client_id,
                 ),
             )
-
-            cur.execute(
-                "SELECT id, nom, telephone, date_debut, duree_abonnement FROM clients WHERE id = %s",
+            row = conn.execute(
+                "SELECT id, nom, telephone, date_debut, duree_abonnement FROM clients WHERE id = ?",
                 (client_id,),
-            )
-            row = cur.fetchone()
+            ).fetchone()
 
     return map_client_row(row)
 
@@ -189,9 +238,13 @@ def update_client(client_id: int, payload: ClientUpdate, token: str = Depends(ge
 @app.delete("/api/clients/{client_id}", status_code=204)
 def delete_client(client_id: int, token: str = Depends(get_authorization_header)) -> None:
     with get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM clients WHERE id = %s", (client_id,))
-            rowcount = cur.rowcount
+        if USE_POSTGRES:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM clients WHERE id = %s", (client_id,))
+                rowcount = cur.rowcount
+        else:
+            cursor = conn.execute("DELETE FROM clients WHERE id = ?", (client_id,))
+            rowcount = cursor.rowcount
 
     if rowcount == 0:
         raise HTTPException(status_code=404, detail="Client introuvable")
@@ -202,45 +255,80 @@ def check_in(client_id: int, token: str = Depends(get_authorization_header)) -> 
     today = date.today()
 
     with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("SELECT id, nom FROM clients WHERE id = %s", (client_id,))
-            client = cur.fetchone()
+        if USE_POSTGRES:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT id, nom FROM clients WHERE id = %s", (client_id,))
+                client = cur.fetchone()
+                if not client:
+                    raise HTTPException(status_code=404, detail="Client introuvable")
+
+                cur.execute(
+                    """
+                    SELECT a.id, a.client_id, c.nom AS nom_client, a.date_visite
+                    FROM attendance a
+                    JOIN clients c ON c.id = a.client_id
+                    WHERE a.client_id = %s AND DATE(a.date_visite) = %s
+                    ORDER BY a.id DESC
+                    LIMIT 1
+                    """,
+                    (client_id, today),
+                )
+                existing = cur.fetchone()
+
+                if existing:
+                    return map_attendance_row(existing)
+
+                now_value = datetime.now().replace(microsecond=0)
+                cur.execute(
+                    "INSERT INTO attendance (client_id, date_visite) VALUES (%s, %s) RETURNING id",
+                    (client_id, now_value),
+                )
+                attendance_id = cur.fetchone()["id"]
+
+                cur.execute(
+                    """
+                    SELECT a.id, a.client_id, c.nom AS nom_client, a.date_visite
+                    FROM attendance a
+                    JOIN clients c ON c.id = a.client_id
+                    WHERE a.id = %s
+                    """,
+                    (attendance_id,),
+                )
+                row = cur.fetchone()
+        else:
+            client = conn.execute("SELECT id, nom FROM clients WHERE id = ?", (client_id,)).fetchone()
             if not client:
                 raise HTTPException(status_code=404, detail="Client introuvable")
 
-            cur.execute(
+            existing = conn.execute(
                 """
                 SELECT a.id, a.client_id, c.nom AS nom_client, a.date_visite
                 FROM attendance a
                 JOIN clients c ON c.id = a.client_id
-                WHERE a.client_id = %s AND DATE(a.date_visite) = %s
+                WHERE a.client_id = ? AND date(a.date_visite) = ?
                 ORDER BY a.id DESC
                 LIMIT 1
                 """,
-                (client_id, today),
-            )
-            existing = cur.fetchone()
+                (client_id, today.isoformat()),
+            ).fetchone()
 
             if existing:
                 return map_attendance_row(existing)
 
-            now_value = datetime.now().replace(microsecond=0)
-            cur.execute(
-                "INSERT INTO attendance (client_id, date_visite) VALUES (%s, %s) RETURNING id",
+            now_value = datetime.now().replace(microsecond=0).isoformat()
+            cursor = conn.execute(
+                "INSERT INTO attendance (client_id, date_visite) VALUES (?, ?)",
                 (client_id, now_value),
             )
-            attendance_id = cur.fetchone()["id"]
-
-            cur.execute(
+            row = conn.execute(
                 """
                 SELECT a.id, a.client_id, c.nom AS nom_client, a.date_visite
                 FROM attendance a
                 JOIN clients c ON c.id = a.client_id
-                WHERE a.id = %s
+                WHERE a.id = ?
                 """,
-                (attendance_id,),
-            )
-            row = cur.fetchone()
+                (cursor.lastrowid,),
+            ).fetchone()
 
     return map_attendance_row(row)
 
@@ -250,18 +338,30 @@ def get_today_attendance(token: str = Depends(get_authorization_header)) -> list
     today = date.today()
 
     with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(
+        if USE_POSTGRES:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT a.id, a.client_id, c.nom AS nom_client, a.date_visite
+                    FROM attendance a
+                    JOIN clients c ON c.id = a.client_id
+                    WHERE DATE(a.date_visite) = %s
+                    ORDER BY a.date_visite DESC
+                    """,
+                    (today,),
+                )
+                rows = cur.fetchall()
+        else:
+            rows = conn.execute(
                 """
                 SELECT a.id, a.client_id, c.nom AS nom_client, a.date_visite
                 FROM attendance a
                 JOIN clients c ON c.id = a.client_id
-                WHERE DATE(a.date_visite) = %s
+                WHERE date(a.date_visite) = ?
                 ORDER BY a.date_visite DESC
                 """,
-                (today,),
-            )
-            rows = cur.fetchall()
+                (today.isoformat(),),
+            ).fetchall()
 
     return [map_attendance_row(row) for row in rows]
 
@@ -271,14 +371,21 @@ def get_dashboard(token: str = Depends(get_authorization_header)) -> DashboardOu
     today = date.today()
 
     with get_connection() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute("SELECT COUNT(*) AS total FROM clients")
-            total_clients = cur.fetchone()["total"]
-            cur.execute(
-                "SELECT COUNT(*) AS total FROM attendance WHERE DATE(date_visite) = %s",
-                (today,),
-            )
-            total_today = cur.fetchone()["total"]
+        if USE_POSTGRES:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT COUNT(*) AS total FROM clients")
+                total_clients = cur.fetchone()["total"]
+                cur.execute(
+                    "SELECT COUNT(*) AS total FROM attendance WHERE DATE(date_visite) = %s",
+                    (today,),
+                )
+                total_today = cur.fetchone()["total"]
+        else:
+            total_clients = conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0]
+            total_today = conn.execute(
+                "SELECT COUNT(*) FROM attendance WHERE date(date_visite) = ?",
+                (today.isoformat(),),
+            ).fetchone()[0]
 
     return {
         "total_clients": total_clients,
