@@ -464,6 +464,21 @@ button {
   font-size: 0.85rem;
 }
 
+.expired-client-meta {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.expired-client-meta .status-badge {
+  width: fit-content;
+  margin-top: 0.2rem;
+}
+
+.expired-client-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -557,6 +572,19 @@ button {
   .section-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .quick-results li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .expired-client-actions {
+    justify-content: stretch;
+  }
+
+  .expired-client-actions button {
+    width: 100%;
   }
 
   .table-wrapper {
