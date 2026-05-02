@@ -7,6 +7,23 @@ import psycopg
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SQLITE_PATH = BASE_DIR / "gym.db"
+ENV_PATH = BASE_DIR / ".env"
+
+
+def load_env_file() -> None:
+    if not ENV_PATH.exists():
+        return
+
+    for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRES = bool(

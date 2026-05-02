@@ -8,6 +8,8 @@ venv/
 
 # Database
 backend/gym.db
+backend/.env
+.env
 
 # Node
 frontend/node_modules/
